@@ -1,5 +1,6 @@
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +19,23 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
-        <h1 className="text-lg font-semibold text-zinc-900">Dashboard</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="text-lg font-semibold text-zinc-900">Dashboard</h1>
+          <nav className="flex gap-4 text-sm">
+            <Link
+              href="/dashboard"
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              Overview
+            </Link>
+            <Link
+              href="/dashboard/chat"
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              Chat
+            </Link>
+          </nav>
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-zinc-600">{displayName}</span>
           <SignOutButton>

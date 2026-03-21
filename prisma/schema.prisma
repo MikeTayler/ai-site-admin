@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id              String         @id @default(cuid())
+  clerkUserId     String         @unique
+  name            String
+  githubRepo      String
+  vercelProjectId String
+  brandConfig     Json
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  conversations   Conversation[]
+  changes         Change[]
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id])
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  role           String // 'user' or 'assistant'
+  content        String       @db.Text
+  metadata       Json? // status events, change summaries, etc.
+  createdAt      DateTime     @default(now())
+}
+
+model Change {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  commitSha String
+  summary   String
+  files     Json // array of changed file paths
+  prompt    String   @db.Text
+  deployUrl String?
+  createdAt DateTime @default(now())
+}

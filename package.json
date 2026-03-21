@@ -9,11 +9,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "db:deploy": "dotenv -e .env.local -- prisma migrate deploy",
+    "db:push": "dotenv -e .env.local -- prisma db push",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.1",
+    "@octokit/request-error": "^7.1.0",
+    "@octokit/rest": "^22.0.1",
+    "@prisma/client": "6.19.2",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "next": "14.2.35",
+    "openai": "^6.32.0",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -21,9 +32,11 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "prisma": "6.19.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
