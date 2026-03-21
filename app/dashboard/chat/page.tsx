@@ -164,8 +164,15 @@ export default function ChatPage() {
       });
 
       if (!res.ok || !res.body) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? res.statusText);
+        const raw = await res.text();
+        let detail = res.statusText || `HTTP ${res.status}`;
+        try {
+          const j = JSON.parse(raw) as { error?: string };
+          if (typeof j.error === "string" && j.error.length > 0) detail = j.error;
+        } catch {
+          if (raw.trim()) detail = raw.trim();
+        }
+        throw new Error(detail);
       }
 
       const reader = res.body.getReader();

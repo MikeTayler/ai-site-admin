@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-site.dev/schemas/components/FAQAccordion.schema.json",
+  "title": "FAQAccordion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variant", "content"],
+  "properties": {
+    "variant": { "type": "string", "enum": ["simple", "grouped"] },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "heading": { "type": "string" },
+        "faqs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["question", "answer"],
+            "properties": {
+              "question": { "type": "string", "minLength": 1 },
+              "answer": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["title", "items"],
+            "properties": {
+              "title": { "type": "string", "minLength": 1 },
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["question", "answer"],
+                  "properties": {
+                    "question": { "type": "string", "minLength": 1 },
+                    "answer": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxWidth": { "type": "string", "enum": ["narrow", "wide", "full"] }
+      }
+    },
+    "className": { "type": "string" },
+    "contentPathPrefix": { "type": "string" }
+  }
+}

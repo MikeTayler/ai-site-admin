@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-site.dev/schemas/components/ContactForm.schema.json",
+  "title": "ContactForm",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variant", "content"],
+  "properties": {
+    "variant": { "type": "string", "enum": ["simple", "with-map", "split"] },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heading"],
+      "properties": {
+        "heading": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "submitLabel": { "type": "string" },
+        "nameLabel": { "type": "string" },
+        "emailLabel": { "type": "string" },
+        "messageLabel": { "type": "string" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxWidth": { "type": "string", "enum": ["narrow", "wide", "full"] }
+      }
+    },
+    "className": { "type": "string" },
+    "contentPathPrefix": { "type": "string" }
+  }
+}

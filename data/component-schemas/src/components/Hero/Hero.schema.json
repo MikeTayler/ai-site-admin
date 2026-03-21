@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-site.dev/schemas/components/Hero.schema.json",
+  "title": "Hero",
+  "description": "Props for the Hero section component (JSON page content + component block).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variant", "content"],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "enum": ["centered", "split", "full-bleed", "video"],
+      "description": "Layout variant (kebab-case, matches PROJECT.md registry)."
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heading"],
+      "properties": {
+        "heading": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary hero heading (required)."
+        },
+        "subheading": {
+          "type": "string",
+          "description": "Optional supporting line below the heading."
+        },
+        "cta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "href"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1 },
+            "href": { "type": "string", "minLength": 1 }
+          }
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "For variant `video`: embed URL (e.g. YouTube) or direct .mp4/.webm URL."
+        },
+        "posterImageUrl": {
+          "type": "string",
+          "description": "Optional poster image URL for HTML5 video (`videoUrl` file asset)."
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src", "alt"],
+          "properties": {
+            "src": { "type": "string" },
+            "alt": { "type": "string", "minLength": 1 },
+            "focalPoint": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              }
+            },
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          },
+          "description": "Optional image for split-layout hero visual (SiteImage)."
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spacing": {
+          "type": "string",
+          "enum": ["compact", "normal", "relaxed"],
+          "description": "Vertical padding preset (maps to theme tokens)."
+        },
+        "background": {
+          "type": "string",
+          "enum": ["primary", "neutral", "background", "accent"],
+          "description": "Background colour token preset."
+        },
+        "maxWidth": {
+          "type": "string",
+          "enum": ["narrow", "wide", "full"],
+          "description": "Max width of the inner content container."
+        }
+      }
+    },
+    "className": {
+      "type": "string",
+      "description": "Optional extra class names for the root element (usually omitted in JSON)."
+    },
+    "contentPathPrefix": {
+      "type": "string",
+      "description": "Optional dot path prefix for data-content-path (visual editor), e.g. pages.home.sections[0]"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-site.dev/schemas/components/SiteHeader.schema.json",
+  "title": "SiteHeader",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variant", "content"],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "enum": ["centered", "left-aligned", "transparent", "sticky"]
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["siteTitle", "navLinks"],
+      "properties": {
+        "siteTitle": { "type": "string", "minLength": 1 },
+        "navLinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "href"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "href": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "cta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "href"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1 },
+            "href": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "type": "string",
+          "enum": ["background", "neutral", "primary", "transparent"]
+        },
+        "maxWidth": { "type": "string", "enum": ["narrow", "wide", "full"] }
+      }
+    },
+    "className": { "type": "string" },
+    "contentPathPrefix": { "type": "string" }
+  }
+}

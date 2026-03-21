@@ -24,19 +24,23 @@ export function resolveComponentLibraryRoot(): string {
   if (env) return path.resolve(env);
 
   const cwd = process.cwd();
-  const sibling = path.resolve(cwd, "..", "ai-site-components");
+  /** Shipped with `ai-site-admin` so Vercel/serverless has schemas without a sibling repo. */
+  const bundled = path.join(cwd, "data", "component-schemas");
+  const bundledComponents = path.join(bundled, "src", "components");
   const fromNodeModules = path.resolve(
     cwd,
     "node_modules",
     "@ai-site",
     "components",
   );
+  const sibling = path.resolve(cwd, "..", "ai-site-components");
 
+  if (existsSync(bundledComponents)) return bundled;
   if (existsSync(fromNodeModules)) return fromNodeModules;
   if (existsSync(sibling)) return sibling;
 
   throw new Error(
-    "Component library not found. Clone `ai-site-components` next to this repo, install `@ai-site/components`, or set COMPONENT_LIBRARY_ROOT to the library root (the folder that contains `src/components`).",
+    "Component library not found. Expected data/component-schemas/src/components (bundled), node_modules/@ai-site/components, ../ai-site-components, or set COMPONENT_LIBRARY_ROOT.",
   );
 }
 

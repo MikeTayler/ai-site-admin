@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-site.dev/schemas/components/SiteFooter.schema.json",
+  "title": "SiteFooter",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["variant", "content"],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "enum": ["simple", "multi-column", "newsletter"]
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["copyrightText"],
+      "properties": {
+        "copyrightText": { "type": "string", "minLength": 1 },
+        "tagline": { "type": "string" },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["links"],
+            "properties": {
+              "heading": { "type": "string" },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "href"],
+                  "properties": {
+                    "label": { "type": "string", "minLength": 1 },
+                    "href": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "newsletterHeading": { "type": "string" },
+        "newsletterPlaceholder": { "type": "string" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": { "type": "string", "enum": ["neutral", "background", "primary"] }
+      }
+    },
+    "className": { "type": "string" },
+    "contentPathPrefix": { "type": "string" }
+  }
+}

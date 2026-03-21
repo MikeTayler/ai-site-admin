@@ -76,27 +76,35 @@ export async function POST(req: Request) {
     typeof rawConvId === "string" && rawConvId.length > 0;
 
   let conversation: { id: string };
-  if (hasConvId) {
-    const found = await prisma.conversation.findFirst({
-      where: { id: rawConvId, clientId: client.id },
-    });
-    if (!found) {
-      return Response.json({ error: "Conversation not found" }, { status: 404 });
+  try {
+    if (hasConvId) {
+      const found = await prisma.conversation.findFirst({
+        where: { id: rawConvId, clientId: client.id },
+      });
+      if (!found) {
+        return Response.json({ error: "Conversation not found" }, { status: 404 });
+      }
+      conversation = found;
+    } else {
+      conversation = await prisma.conversation.create({
+        data: { clientId: client.id },
+      });
     }
-    conversation = found;
-  } else {
-    conversation = await prisma.conversation.create({
-      data: { clientId: client.id },
-    });
-  }
 
-  await prisma.message.create({
-    data: {
-      conversationId: conversation.id,
-      role: "user",
-      content: message,
-    },
-  });
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        role: "user",
+        content: message,
+      },
+    });
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    return Response.json(
+      { error: `Could not save message: ${errMsg}` },
+      { status: 500 },
+    );
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
