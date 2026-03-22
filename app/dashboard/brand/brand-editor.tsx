@@ -124,8 +124,11 @@ function BrandPreview({
     RADIUS.find((r) => r.value === brand.borderRadius)?.px ?? 8;
   const space = SPACING.find((s) => s.value === brand.spacing) ?? SPACING[2];
 
-  const lightSrc = pendingLight ?? rawGithubAssetUrl(githubRepo, brand.logo.light);
-  const darkSrc = pendingDark ?? rawGithubAssetUrl(githubRepo, brand.logo.dark);
+  /** `SiteHeader`: on light header backgrounds it shows `logo.dark` (dark ink); on primary/dark header, `logo.light`. */
+  const srcForLightHeaderBg =
+    pendingDark ?? rawGithubAssetUrl(githubRepo, brand.logo.dark);
+  const srcForDarkHeaderBg =
+    pendingLight ?? rawGithubAssetUrl(githubRepo, brand.logo.light);
 
   return (
     <div
@@ -151,8 +154,8 @@ function BrandPreview({
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={lightSrc}
-              alt="Logo light"
+              src={srcForLightHeaderBg}
+              alt="Logo on default header"
               className="h-8 max-w-[140px] object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
@@ -211,10 +214,12 @@ function BrandPreview({
             className="flex-1 rounded border border-zinc-200 p-2"
             style={{ backgroundColor: brand.colors.background }}
           >
-            <p className="mb-1 text-[10px] uppercase text-zinc-500">Light logo</p>
+            <p className="mb-1 text-[10px] uppercase text-zinc-500">
+              Default header (light bg) → <code className="text-[9px]">logo.dark</code>
+            </p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={lightSrc}
+              src={srcForLightHeaderBg}
               alt=""
               className="h-6 max-w-full object-contain"
               onError={(e) => {
@@ -226,10 +231,12 @@ function BrandPreview({
             className="flex-1 rounded border border-zinc-600 p-2"
             style={{ backgroundColor: "#18181b" }}
           >
-            <p className="mb-1 text-[10px] uppercase text-zinc-400">Dark logo</p>
+            <p className="mb-1 text-[10px] uppercase text-zinc-400">
+              Primary header (dark bg) → <code className="text-[9px]">logo.light</code>
+            </p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={darkSrc}
+              src={srcForDarkHeaderBg}
               alt=""
               className="h-6 max-w-full object-contain"
               onError={(e) => {
@@ -451,20 +458,20 @@ export function BrandEditor() {
             <div className="space-y-6">
               <div>
                 <p className="mb-2 text-sm font-medium text-zinc-700">Logos</p>
+                <p className="mb-3 text-xs leading-relaxed text-zinc-600">
+                  The site header is usually on a <strong>light</strong> background and uses{" "}
+                  <code className="rounded bg-zinc-100 px-0.5">logo.dark</code> (dark-coloured
+                  mark). The second slot is for a <strong>dark</strong> header (primary style),
+                  which uses <code className="rounded bg-zinc-100 px-0.5">logo.light</code>.
+                </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs text-zinc-500">Light background</label>
-                    <input
-                      type="file"
-                      accept="image/svg+xml,image/png,image/jpeg,image/webp"
-                      className="text-sm"
-                      onChange={(e) =>
-                        onLogoFile("light", e.target.files?.[0] ?? null)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-zinc-500">Dark background</label>
+                    <label className="mb-1 block text-xs font-medium text-zinc-700">
+                      Default header (most visitors)
+                    </label>
+                    <p className="mb-1 text-[11px] text-zinc-500">
+                      Dark logo on light background → saves as <code>logo.dark</code>
+                    </p>
                     <input
                       type="file"
                       accept="image/svg+xml,image/png,image/jpeg,image/webp"
@@ -474,10 +481,28 @@ export function BrandEditor() {
                       }
                     />
                   </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-zinc-700">
+                      Primary / dark header
+                    </label>
+                    <p className="mb-1 text-[11px] text-zinc-500">
+                      Light logo on dark background → saves as <code>logo.light</code>
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                      className="text-sm"
+                      onChange={(e) =>
+                        onLogoFile("light", e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </div>
                 </div>
                 <p className="mt-2 text-xs text-zinc-500">
-                  Upload commits to <code>public/images/brand-light.*</code> and{" "}
-                  <code>brand-dark.*</code>. Max ~1.5MB.
+                  Files commit to <code>public/images/brand-dark.*</code> and{" "}
+                  <code>brand-light.*</code> in the site repo. Max ~1.5MB. For a{" "}
+                  <strong>local</strong> template clone, run <code>git pull</code> after saving —
+                  the admin only pushes to GitHub, not your disk.
                 </p>
               </div>
 
