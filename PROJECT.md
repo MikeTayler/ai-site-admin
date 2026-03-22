@@ -30,7 +30,8 @@ A Next.js application deployed to Vercel. This is the template that gets forked 
 
 A separate Next.js application where clients log in (via Clerk) to manage their site. This is the product's control plane. It contains:
 
-- **Chat Interface** — the primary interaction mode. Clients send natural language prompts to modify their site.
+- **Chat Interface** — the primary interaction mode. Clients send natural language prompts to modify their site. **Suggested prompts (phase 4.4)** — context-aware chips above the input (new site vs established site, missing sections such as testimonials/FAQ, recent Git changes, seasonal nudges); clicking fills the textarea without sending.
+- **Brand settings (phase 4.5)** — `/dashboard/brand`: visual identity (logo upload, colour palette, Google Fonts typography, border radius, spacing), voice and tone (multi-select tone, industry, audience, value propositions, keyword/tag lists). Saves to `Client.brandConfig`, commits `content/brand.json` to the client repo, and records a `Change` row; live preview panel reflects the same JSON the site `ThemeProvider` consumes.
 - **AI Engine** — calls LLMs via OpenRouter (OpenAI-compatible API). Translates prompts into validated JSON content changes using component schemas and brand context.
 - **Git Integration** — commits changes to the client's site repo via the GitHub API. Atomic multi-file commits using the Git Trees API.
 - **Deploy Monitoring** — watches Vercel deployments via their API. Confirms changes are live.

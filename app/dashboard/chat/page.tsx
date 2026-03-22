@@ -67,6 +67,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [statusLines, setStatusLines] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionRound, setSuggestionRound] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -113,6 +115,35 @@ export default function ChatPage() {
     void loadMessages();
   }, [loadMessages]);
 
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const q = new URLSearchParams();
+        q.set("round", String(suggestionRound));
+        if (conversationId) q.set("conversationId", conversationId);
+        const res = await fetch(`/api/chat/suggestions?${q}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { suggestions?: string[] };
+        if (
+          !cancelled &&
+          Array.isArray(data.suggestions) &&
+          data.suggestions.length > 0
+        ) {
+          setSuggestions(data.suggestions);
+        }
+      } catch {
+        if (!cancelled) setSuggestions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, suggestionRound, conversationId]);
+
   const handleNewConversation = async () => {
     try {
       const res = await fetch("/api/chat/conversations", {
@@ -129,6 +160,8 @@ export default function ChatPage() {
       setConversationId(id);
       setMessages([]);
       setStatusLines([]);
+      setSuggestionRound(0);
+      setSuggestions([]);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Could not start thread");
     }
@@ -218,6 +251,7 @@ export default function ChatPage() {
       }
 
       await loadMessages(resolvedConvId);
+      setSuggestionRound((r) => r + 1);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Request failed";
       setMessages((prev) => [
@@ -228,6 +262,7 @@ export default function ChatPage() {
           content: `**Error:** ${msg}`,
         },
       ]);
+      setSuggestionRound((r) => r + 1);
     } finally {
       setSending(false);
       setStreaming(false);
@@ -340,6 +375,29 @@ export default function ChatPage() {
       </div>
 
       <div className="border-t border-zinc-100 p-4">
+        {suggestions.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-2 text-xs font-medium text-zinc-500">
+              Suggested prompts
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((label, i) => (
+                <button
+                  key={`${label}-${i}`}
+                  type="button"
+                  onClick={() => {
+                    setInput(label);
+                    textareaRef.current?.focus();
+                  }}
+                  disabled={sending}
+                  className="max-w-full rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-left text-xs leading-snug text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-white disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex gap-2">
           <textarea
             ref={textareaRef}

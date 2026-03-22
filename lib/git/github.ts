@@ -357,6 +357,53 @@ export async function commitChanges(
 }
 
 /**
+ * Create or update a single file anywhere in the repo (e.g. `public/images/…` for logos).
+ * Uses the Contents API — suitable for binary and text blobs.
+ */
+export async function putRepoFile(
+  repo: SiteRepo,
+  filePath: string,
+  body: Buffer,
+  commitMessage: string,
+): Promise<{ commitSha: string }> {
+  const { owner, repo: repoName } = parseRepo(repo);
+  const path = normalizePath(filePath);
+  const octokit = getOctokit();
+  try {
+    await assertRateLimitHeadroom(octokit, "putRepoFile", 3);
+    let sha: string | undefined;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo: repoName,
+        path,
+      });
+      if (!Array.isArray(data) && data.type === "file" && "sha" in data) {
+        sha = data.sha;
+      }
+    } catch {
+      /* file does not exist yet */
+    }
+    const content = body.toString("base64");
+    const { data: result } = await octokit.repos.createOrUpdateFileContents({
+      owner,
+      repo: repoName,
+      path,
+      message: commitMessage.trim() || "Update file",
+      content,
+      sha,
+    });
+    const commitSha = result.commit?.sha;
+    if (!commitSha) {
+      throw new Error("putRepoFile: GitHub did not return a commit SHA.");
+    }
+    return { commitSha };
+  } catch (e) {
+    throw formatGithubError(e, "putRepoFile");
+  }
+}
+
+/**
  * Recent commits touching `content/` (for version timeline).
  * Stops paginating once `limit` commits are collected (saves API calls vs full `paginate`).
  */

@@ -34,6 +34,12 @@ export default async function DashboardLayout({
             >
               Chat
             </Link>
+            <Link
+              href="/dashboard/brand"
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              Brand
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

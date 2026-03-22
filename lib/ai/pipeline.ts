@@ -1,5 +1,6 @@
 import { runAiEngine } from "@/lib/ai/engine";
 import { getCachedComponentManifest } from "@/lib/ai/manifest";
+import { normalizeBrandConfig } from "@/lib/brand/defaults";
 import { prisma } from "@/lib/db";
 import { commitChanges, getAllContent } from "@/lib/git/github";
 import { waitForDeployment } from "@/lib/deploy/vercel";
@@ -133,7 +134,10 @@ export async function processPrompt(
     logPipeline("load_manifest");
     const { entries: manifest } = await getCachedComponentManifest();
 
-    const brandConfig = client.brandConfig;
+    const brandFromRepo = siteState["content/brand.json"];
+    const brandConfig = normalizeBrandConfig(
+      brandFromRepo !== undefined ? brandFromRepo : client.brandConfig,
+    );
 
     emit(
       onProgress,
