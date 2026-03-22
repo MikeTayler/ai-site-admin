@@ -106,6 +106,18 @@ export function SitePreviewPanel({
           </a>
         )}
       </div>
+      {url && (
+        <div
+          className={`border-b border-zinc-100 bg-white px-3 py-2 ${compact ? "px-2 py-1.5" : ""}`}
+        >
+          <p className="text-[11px] leading-snug text-zinc-500">
+            <span className="font-medium text-zinc-600">Iframe URL (production):</span>{" "}
+            <span className="break-all font-mono text-zinc-800" title={url}>
+              {url}
+            </span>
+          </p>
+        </div>
+      )}
       {loadError && (
         <div className="border-b border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           {loadError}

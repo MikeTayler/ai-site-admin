@@ -18,20 +18,92 @@ export type LatestDeployment = {
   createdAt: number;
 };
 
+export type VercelProjectDomain = {
+  name: string;
+  apexName?: string;
+  verified: boolean;
+  /** If set, the domain is tied to a preview branch; production aliases usually omit this. */
+  gitBranch?: string | null;
+};
+
 export type VercelProjectInfo = {
   id: string;
   name: string;
   framework?: string | null;
   /** Primary production hostname when inferable (verified custom or default `*.vercel.app`) */
   productionDomain?: string;
-  domains: Array<{
-    name: string;
-    apexName?: string;
-    verified: boolean;
-  }>;
+  domains: VercelProjectDomain[];
   /** Raw subset of the Vercel project payload for advanced use */
   raw: Record<string, unknown>;
 };
+
+/**
+ * Picks the production hostname from GET /v9/projects `domains` (no guessing from project `name`).
+ * Prefers verified custom domains, then production Vercel aliases (`gitBranch` unset), then other verified hosts.
+ */
+export function pickProductionHostnameFromDomains(
+  domainRows: VercelProjectDomain[],
+): string | undefined {
+  if (!domainRows.length) return undefined;
+
+  const verified = domainRows.filter((d) => d.verified);
+
+  const custom = verified.find((d) => !d.name.endsWith(".vercel.app"));
+  if (custom) return custom.name;
+
+  const vercelVerified = verified.filter((d) => d.name.endsWith(".vercel.app"));
+  const prodVercel = vercelVerified.filter(
+    (d) => d.gitBranch == null || d.gitBranch === "",
+  );
+  const vercelCandidates = prodVercel.length > 0 ? prodVercel : vercelVerified;
+  if (vercelCandidates.length === 1) return vercelCandidates[0].name;
+  if (vercelCandidates.length > 1) {
+    return [...vercelCandidates].sort((a, b) => b.name.length - a.name.length)[0]
+      .name;
+  }
+
+  const anyVercel = domainRows.find((d) => d.name.endsWith(".vercel.app"));
+  return anyVercel?.name;
+}
+
+function parseVercelDomainRow(row: unknown): VercelProjectDomain | null {
+  if (!row || typeof row !== "object") return null;
+  const o = row as Record<string, unknown>;
+  const n = o.name;
+  if (typeof n !== "string") return null;
+  const gb = o.gitBranch;
+  const gitBranch =
+    typeof gb === "string" ? gb : gb === null ? null : undefined;
+  return {
+    name: n,
+    apexName: typeof o.apexName === "string" ? o.apexName : undefined,
+    verified: o.verified === true,
+    gitBranch,
+  };
+}
+
+/**
+ * Domains assigned to the project (GET /v9/projects/:idOrName/domains).
+ * Prefer this over the embedded `domains` field on GET /v9/projects/:id, which may be absent.
+ */
+export async function fetchProjectDomainsFromApi(
+  projectId: string,
+): Promise<VercelProjectDomain[]> {
+  const data = await vercelFetch<Record<string, unknown> | unknown[]>(
+    `/v9/projects/${encodeURIComponent(projectId)}/domains`,
+  );
+  const rawDomains: unknown[] = Array.isArray(data)
+    ? data
+    : Array.isArray((data as Record<string, unknown>).domains)
+      ? ((data as Record<string, unknown>).domains as unknown[])
+      : [];
+  const out: VercelProjectDomain[] = [];
+  for (const row of rawDomains) {
+    const d = parseVercelDomainRow(row);
+    if (d) out.push(d);
+  }
+  return out;
+}
 
 function getToken(): string {
   const t = process.env.VERCEL_TOKEN?.trim();
@@ -180,17 +252,62 @@ type DeploymentListItem = {
   url?: string | null;
   created?: number;
   createdAt?: number;
+  /** Production / preview aliases — prefer these over `url` (which is the unique deployment hostname). */
+  alias?: string[] | null;
 };
 
 type ListDeploymentsResponse = {
   deployments?: DeploymentListItem[];
 };
 
+function hostnameFromAliasEntry(entry: string): string {
+  const t = entry.trim();
+  if (!t) return "";
+  if (t.startsWith("http://") || t.startsWith("https://")) {
+    try {
+      return new URL(t).hostname;
+    } catch {
+      return t;
+    }
+  }
+  return t.split("/")[0];
+}
+
+/**
+ * Public hostname for a deployment: use assigned aliases (stable production URLs), not the
+ * per-deployment URL (`*.vercel.app` with team/hash segments from list response).
+ */
+function deploymentPublicHostname(d: DeploymentListItem): string {
+  const rawAliases = Array.isArray(d.alias) ? d.alias : [];
+  const hosts = rawAliases
+    .filter((x): x is string => typeof x === "string" && x.length > 0)
+    .map(hostnameFromAliasEntry)
+    .filter(Boolean);
+
+  const vercelHosts = hosts.filter((h) => h.endsWith(".vercel.app"));
+  if (vercelHosts.length > 0) {
+    vercelHosts.sort((a, b) => a.length - b.length);
+    return vercelHosts[0];
+  }
+  if (hosts.length > 0) return hosts[0];
+
+  const raw = d.url ?? "";
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    try {
+      return new URL(raw).hostname;
+    } catch {
+      /* fall through */
+    }
+  }
+  return raw.replace(/^https?:\/\//, "").split("/")[0];
+}
+
 function mapDeployment(d: DeploymentListItem): LatestDeployment {
   const id = d.uid ?? d.id ?? "";
   const status = (d.readyState ?? d.state ?? "UNKNOWN").toString();
   const createdAt = d.created ?? d.createdAt ?? 0;
-  const host = d.url ?? "";
+  const host = deploymentPublicHostname(d);
   return {
     id,
     name: d.name ?? "",
@@ -202,7 +319,7 @@ function mapDeployment(d: DeploymentListItem): LatestDeployment {
 
 /**
  * Returns the most recent deployment for the project (newest first).
- * Includes preview and production — prefer {@link getLatestProductionDeployment} for stable production URLs.
+ * Includes preview and production — not suitable for a stable “live site” URL; use {@link getProductionSiteUrl}.
  */
 export async function getLatestDeployment(
   projectId: string,
@@ -243,32 +360,27 @@ export async function getLatestProductionDeployment(
 }
 
 /**
- * HTTPS URL for the live **production** site — verified custom domain, project `*.vercel.app`,
- * or the latest production deployment hostname. Does not return preview-branch deployment URLs.
+ * HTTPS URL for the live **production** site — **only** from the Vercel project’s assigned
+ * domains (stable aliases). Never uses per-deployment URLs from the deployments API.
  */
 export async function getProductionSiteUrl(
   projectId: string,
 ): Promise<string | null> {
   try {
-    const info = await getProjectInfo(projectId);
-    if (info.productionDomain) {
-      const u = deploymentHostnameToUrl(info.productionDomain);
-      if (u) return u;
+    let domains: VercelProjectDomain[] = [];
+    try {
+      domains = await fetchProjectDomainsFromApi(projectId);
+    } catch {
+      domains = [];
     }
-    if (info.name) {
-      return `https://${info.name}.vercel.app`;
+    if (domains.length === 0) {
+      domains = (await getProjectInfo(projectId)).domains;
     }
-  } catch {
-    /* try production deployments below */
-  }
-
-  try {
-    const d = await getLatestProductionDeployment(projectId);
-    if (d?.url) return d.url;
+    const host = pickProductionHostnameFromDomains(domains);
+    if (host) return deploymentHostnameToUrl(host);
   } catch {
     /* ignore */
   }
-
   return null;
 }
 
@@ -364,23 +476,12 @@ export async function getProjectInfo(
   const rawDomains = raw.domains;
   if (Array.isArray(rawDomains)) {
     for (const row of rawDomains) {
-      if (!row || typeof row !== "object") continue;
-      const o = row as Record<string, unknown>;
-      const n = o.name;
-      if (typeof n !== "string") continue;
-      domainRows.push({
-        name: n,
-        apexName: typeof o.apexName === "string" ? o.apexName : undefined,
-        verified: o.verified === true,
-      });
+      const d = parseVercelDomainRow(row);
+      if (d) domainRows.push(d);
     }
   }
 
-  const verified = domainRows.filter((d) => d.verified);
-  const productionDomain =
-    verified.find((d) => !d.name.endsWith(".vercel.app"))?.name ??
-    verified[0]?.name ??
-    domainRows.find((d) => d.name.endsWith(".vercel.app"))?.name;
+  const productionDomain = pickProductionHostnameFromDomains(domainRows);
 
   return {
     id,

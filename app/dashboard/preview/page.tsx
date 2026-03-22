@@ -8,7 +8,10 @@ export default function PreviewPage() {
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-zinc-900">Site preview</h2>
         <p className="text-sm text-zinc-500">
-          Live deployment from your latest pipeline run or Vercel project.
+          Loads the <strong className="font-medium text-zinc-700">production</strong>{" "}
+          hostname for your linked Vercel project (verified custom domain, or{" "}
+          <code className="text-xs">*.vercel.app</code>), not a branch preview URL.
+          The URL is shown above the frame.
         </p>
       </div>
       <div className="min-h-0 flex-1">
