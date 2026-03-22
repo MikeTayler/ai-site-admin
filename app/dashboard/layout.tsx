@@ -40,6 +40,18 @@ export default async function DashboardLayout({
             >
               Brand
             </Link>
+            <Link
+              href="/dashboard/preview"
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              Preview
+            </Link>
+            <Link
+              href="/dashboard/history"
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              History
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

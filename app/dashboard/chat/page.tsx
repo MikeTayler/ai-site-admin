@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PipelineProgressPhase } from "@/lib/ai/pipeline";
+import type { PipelineProgressPhase, PipelineResult } from "@/lib/ai/pipeline";
+import { SitePreviewPanel } from "@/components/site-preview-panel";
 
 type ChatMessage = {
   id: string;
@@ -20,7 +22,7 @@ type StreamEvent =
       timestamp?: string;
       detail?: unknown;
     }
-  | { type: "result"; conversationId: string }
+  | { type: "result"; result: PipelineResult; conversationId: string }
   | { type: "error"; message: string };
 
 function getDeployUrl(meta: unknown): string | undefined {
@@ -69,8 +71,77 @@ export default function ChatPage() {
   const [statusLines, setStatusLines] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionRound, setSuggestionRound] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewSplit, setPreviewSplit] = useState(52);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startSplit: number; width: number } | null>(
+    null,
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("dashboard-chat-show-preview") === "1") {
+        setShowPreview(true);
+      }
+      const s = localStorage.getItem("dashboard-chat-preview-split");
+      if (s) {
+        const n = Number(s);
+        if (!Number.isNaN(n)) setPreviewSplit(Math.min(78, Math.max(28, n)));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("dashboard-chat-show-preview", showPreview ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [showPreview]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("dashboard-chat-preview-split", String(previewSplit));
+    } catch {
+      /* ignore */
+    }
+  }, [previewSplit]);
+
+  const onSeparatorMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = layoutRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragRef.current = {
+      startX: e.clientX,
+      startSplit: previewSplit,
+      width: rect.width,
+    };
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = ev.clientX - d.startX;
+      const deltaPct = (dx / d.width) * 100;
+      const next = Math.min(78, Math.max(28, d.startSplit - deltaPct));
+      setPreviewSplit(next);
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.removeProperty("cursor");
+      document.body.style.removeProperty("user-select");
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [previewSplit]);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -228,6 +299,13 @@ export default function ChatPage() {
           if (ev.type === "result") {
             resolvedConvId = ev.conversationId;
             setConversationId(ev.conversationId);
+            if (
+              ev.result.success &&
+              ev.result.deployUrl &&
+              ev.result.deployUrl.length > 0
+            ) {
+              setPreviewRefreshKey((k) => k + 1);
+            }
           }
           if (ev.type === "error") {
             setStatusLines((prev) => [...prev, `Error: ${ev.message}`]);
@@ -243,6 +321,13 @@ export default function ChatPage() {
           if (ev.type === "result") {
             resolvedConvId = ev.conversationId;
             setConversationId(ev.conversationId);
+            if (
+              ev.result.success &&
+              ev.result.deployUrl &&
+              ev.result.deployUrl.length > 0
+            ) {
+              setPreviewRefreshKey((k) => k + 1);
+            }
           }
           if (ev.type === "error") {
             setStatusLines((prev) => [...prev, `Error: ${ev.message}`]);
@@ -295,21 +380,44 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-8.5rem)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+    <div
+      ref={layoutRef}
+      className="flex h-[calc(100dvh-8.5rem)] min-h-[420px] min-w-0 flex-row gap-0"
+    >
+      <div
+        className="flex min-h-0 min-w-0 flex-col"
+        style={{ width: showPreview ? `${previewSplit}%` : "100%" }}
+      >
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3">
         <div>
           <h2 className="text-base font-semibold text-zinc-900">Chat</h2>
           <p className="text-xs text-zinc-500">
             Prompts run the full AI → Git → Vercel pipeline.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleNewConversation()}
-          className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
-        >
-          New conversation
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPreview((v) => !v)}
+            className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+          >
+            {showPreview ? "Hide preview" : "Show preview"}
+          </button>
+          <Link
+            href="/dashboard/preview"
+            className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+          >
+            Full-page preview
+          </Link>
+          <button
+            type="button"
+            onClick={() => void handleNewConversation()}
+            className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+          >
+            New conversation
+          </button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -419,6 +527,28 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+        </div>
+      </div>
+
+      {showPreview && (
+        <>
+          <button
+            type="button"
+            aria-label="Resize chat and preview"
+            onMouseDown={onSeparatorMouseDown}
+            className="group relative w-3 shrink-0 cursor-col-resize border-x border-transparent bg-transparent px-0 hover:bg-zinc-100/80"
+          >
+            <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-zinc-200 group-hover:bg-zinc-400" />
+          </button>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+            <SitePreviewPanel
+              compact
+              refreshKey={previewRefreshKey}
+              className="h-full min-h-0 border-0 shadow-none"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
