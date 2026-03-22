@@ -202,6 +202,7 @@ function mapDeployment(d: DeploymentListItem): LatestDeployment {
 
 /**
  * Returns the most recent deployment for the project (newest first).
+ * Includes preview and production — prefer {@link getLatestProductionDeployment} for stable production URLs.
  */
 export async function getLatestDeployment(
   projectId: string,
@@ -220,6 +221,55 @@ export async function getLatestDeployment(
     );
   }
   return mapDeployment(d);
+}
+
+/**
+ * Most recent **production** deployment only (excludes preview/branch deployments).
+ */
+export async function getLatestProductionDeployment(
+  projectId: string,
+): Promise<LatestDeployment | null> {
+  const q = new URLSearchParams({
+    projectId,
+    limit: "1",
+    target: "production",
+  });
+  const data = await vercelFetch<ListDeploymentsResponse>(
+    `/v6/deployments?${q.toString()}`,
+  );
+  const d = data.deployments?.[0];
+  if (!d) return null;
+  return mapDeployment(d);
+}
+
+/**
+ * HTTPS URL for the live **production** site — verified custom domain, project `*.vercel.app`,
+ * or the latest production deployment hostname. Does not return preview-branch deployment URLs.
+ */
+export async function getProductionSiteUrl(
+  projectId: string,
+): Promise<string | null> {
+  try {
+    const info = await getProjectInfo(projectId);
+    if (info.productionDomain) {
+      const u = deploymentHostnameToUrl(info.productionDomain);
+      if (u) return u;
+    }
+    if (info.name) {
+      return `https://${info.name}.vercel.app`;
+    }
+  } catch {
+    /* try production deployments below */
+  }
+
+  try {
+    const d = await getLatestProductionDeployment(projectId);
+    if (d?.url) return d.url;
+  } catch {
+    /* ignore */
+  }
+
+  return null;
 }
 
 const POLL_MS = 3000;

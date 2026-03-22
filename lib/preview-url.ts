@@ -1,24 +1,15 @@
 import { prisma } from "@/lib/db";
-import { getLatestDeployment } from "@/lib/deploy/vercel";
+import { getProductionSiteUrl } from "@/lib/deploy/vercel";
 
 /**
- * Best URL to load in the site preview iframe for a client.
- * Prefers the latest Change with a deploy URL, then falls back to Vercel’s latest deployment.
+ * URL for the site preview iframe: always the **production** hostname (custom domain or
+ * `project.vercel.app` from Vercel project settings), never a branch/preview deployment URL.
+ * `Change.deployUrl` is not used here — it stores the per-deployment URL from the pipeline.
  */
 export async function resolvePreviewUrlForClient(clientId: string): Promise<{
   url: string | null;
-  source: "change" | "vercel" | "none";
+  source: "production" | "none";
 }> {
-  const latestChange = await prisma.change.findFirst({
-    where: { clientId, deployUrl: { not: null } },
-    orderBy: { createdAt: "desc" },
-    select: { deployUrl: true },
-  });
-  const fromChange = latestChange?.deployUrl?.trim();
-  if (fromChange) {
-    return { url: fromChange, source: "change" };
-  }
-
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     select: { vercelProjectId: true },
@@ -28,10 +19,10 @@ export async function resolvePreviewUrlForClient(clientId: string): Promise<{
   }
 
   try {
-    const d = await getLatestDeployment(client.vercelProjectId);
-    if (d.url) return { url: d.url, source: "vercel" };
+    const url = await getProductionSiteUrl(client.vercelProjectId);
+    if (url) return { url, source: "production" };
   } catch {
-    /* no deployments or API error */
+    /* VERCEL_TOKEN missing, API error, etc. */
   }
 
   return { url: null, source: "none" };

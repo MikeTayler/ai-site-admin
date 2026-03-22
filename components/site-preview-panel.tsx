@@ -45,7 +45,7 @@ export function SitePreviewPanel({
       setSource(data.source ?? null);
       if (!data.url) {
         setLoadError(
-          "No deployment URL yet. Run a chat prompt or connect Vercel.",
+          "No production URL yet. Check VERCEL_TOKEN and the project’s Vercel domains.",
         );
       }
     } catch (e) {
@@ -133,7 +133,7 @@ export function SitePreviewPanel({
           </div>
         ) : (
           <p className="text-center text-sm text-zinc-500">
-            Preview URL unavailable.
+            Production preview URL unavailable.
           </p>
         )}
       </div>

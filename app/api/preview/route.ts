@@ -4,7 +4,7 @@ import { resolvePreviewUrlForClient } from "@/lib/preview-url";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** GET — { url, source } for the site preview iframe. */
+/** GET — { url, source } for the site preview iframe (production hostname only). */
 export async function GET() {
   const res = await requireClientForUser();
   if (!res.ok) {
